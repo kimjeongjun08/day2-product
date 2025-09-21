@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: 003150130236.dkr.ecr.eu-central-1.amazonaws.com/product/dev
-  tag: 'latest'
+  tag: '2a9096c0b92e28380c947659a7cbf1c201b88346'
   pullPolicy: IfNotPresent
 
 service:
