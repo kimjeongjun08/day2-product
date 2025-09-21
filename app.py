@@ -6,7 +6,7 @@ app = FastAPI()
 
 @app.get("/api", response_class=PlainTextResponse)
 def get_api():
-    return "product marking!"
+    return "product v1"
 
 @app.get("/health", response_class=PlainTextResponse)
 def health_check():
