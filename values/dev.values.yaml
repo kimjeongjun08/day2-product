@@ -1,0 +1,19 @@
+replicaCount: 2
+
+image:
+  repository: 003150130236.dkr.ecr.eu-central-1.amazonaws.com/product/dev
+  tag: 'latest'
+  pullPolicy: IfNotPresent
+
+service:
+  name: dev-app
+  targetPort: 8080
+
+ingress:
+  name: dev-ingress
+
+loadbalancer:
+  name: dev-alb
+
+rollout:
+  enabled: false

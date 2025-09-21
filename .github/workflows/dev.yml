@@ -1,0 +1,103 @@
+name: Dev CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [dev]
+  push:
+    branches: [dev]
+
+permissions:
+  pull-requests: write
+  contents: write
+  id-token: write
+
+jobs:
+  auto-merge-feature:
+    if: startsWith(github.head_ref, 'feature/')
+    runs-on: dev
+    outputs:
+      merged: ${{ steps.check-merge.outputs.merged }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Merge feature/* PR into dev
+        id: check-merge
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} --merge --admin --delete-branch
+          echo "merged=true" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-deploy:
+    if: needs.auto-merge-feature.outputs.merged == 'true'
+    needs: auto-merge-feature
+    runs-on: dev
+
+    env:
+      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+      IMAGE_URI: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/product/dev
+      CACHE_IMAGE: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-central-1.amazonaws.com/cache:cache
+
+    steps:
+      - name: Checkout code (dev)
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          sparse-checkout: |
+            Dockerfile
+            app.py
+            requirements.txt
+            .dockerignore
+            values/dev.values.yaml
+          sparse-checkout-cone-mode: false
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-role
+          aws-region: eu-central-1
+          role-duration-seconds: 1200
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Setup Buildx and QEMU
+        run: |
+          if ! docker buildx inspect mybuilder 2>/dev/null; then
+            docker buildx create --name mybuilder --driver docker-container --use
+            docker buildx inspect --bootstrap
+          fi
+          docker run --privileged --rm tonistiigi/binfmt --install all
+
+      - name: Multi-Arch Build & Push with ECR Cache (OCI Index)
+        run: |
+          docker buildx use mybuilder
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag $IMAGE_URI:${{ github.sha }} \
+            --push \
+            --cache-to type=registry,ref=$CACHE_IMAGE,mode=max \
+            --cache-from type=registry,ref=$CACHE_IMAGE \
+            --output type=registry,oci-mediatypes=true \
+            .
+
+      - name: Update values.yaml with new image tag
+        run: |
+          sed -i "s|tag: .*|tag: '${{ github.sha }}'|" values/dev.values.yaml
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add values/dev.values.yaml
+          git commit -m "chore: bump image tag to ${{ github.sha }}" || echo "No changes to commit"
+          git pull --rebase origin dev || true
+          git push origin dev
+
+      - name: Trigger ArgoCD Sync
+        run: |
+          echo y | argocd login $ARGOCD_SERVER \
+            --username admin \
+            --password "Skill53##" \
+            --insecure
+          argocd app sync dev

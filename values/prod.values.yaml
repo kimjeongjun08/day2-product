@@ -1,0 +1,19 @@
+replicaCount: 2
+
+image:
+  repository: 003150130236.dkr.ecr.eu-central-1.amazonaws.com/product/prod
+  tag: 'latest'
+  pullPolicy: IfNotPresent
+
+service:
+  name: prod-app
+  targetPort: 8080
+
+ingress:
+  name: prod-ingress
+  
+loadbalancer:
+  name: prod-alb
+
+rollout:
+  enabled: true

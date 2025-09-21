@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name }}-active
+  namespace: app
+spec:
+  type: NodePort
+  selector:
+    app: {{ .Chart.Name }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: {{ .Values.service.targetPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.service.name }}-preview
+  namespace: app
+spec:
+  type: NodePort
+  selector:
+    app: {{ .Chart.Name }}
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: {{ .Values.service.targetPort }}
