@@ -30,8 +30,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
   build-and-deploy:
-    if: needs.auto-merge-feature.outputs.merged == 'true'
-    needs: auto-merge-feature
+    # if: needs.auto-merge-feature.outputs.merged == 'true'
+    # needs: auto-merge-feature
     runs-on: dev
 
     env:
