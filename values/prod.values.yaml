@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: 003150130236.dkr.ecr.eu-central-1.amazonaws.com/product/prod
-  tag: '0ba3b79defef37ecf8fb80dc5faba6f4e0207a98'
+  tag: '9d8a6e5671d4c7c0beef73b8f2e00dbbc74075a2'
   pullPolicy: IfNotPresent
 
 service:
